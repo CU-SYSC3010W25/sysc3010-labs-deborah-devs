@@ -1,0 +1,121 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+	<style>
+		div {
+			margin: auto;
+		}
+		#display {
+			width: 400px;
+			height: 400px;
+		}
+		.led {
+			float: left;
+			width: 46px;
+			height: 48px;
+			background-color: #000;
+			border-width: 2px;
+			border-color: #777;
+			border-style: solid;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="display"></div><br>
+	<div>
+		<label for="colorpicker">Pick a color:</label>
+		<input type="color" id="colorpicker" value="#0000ff">
+	</div>
+	<br>
+	<div>
+		<button id="clearledsbutton">Clear LEDs</button>
+	</div>
+
+	<!-- Script required to run shocket.io -->
+	<script
+src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"
+	integrity="sha512-
+q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+
+DyZwA=="
+	crossorigin="anonymous">
+	</script>
+
+	<!—Start of JavaScript to respond to Web-GUI -->
+	<script type="text/javascript" charset="utf-8">
+		// create the socketio instance
+		var socket = io();
+		// gets the element with id display (div)
+		var display = document.getElementById('display');
+		// gets the current color of the colorpicker
+		var color = document.getElementById('colorpicker').value;
+		// Function to be called once the color of the colorpicker changes
+		document.getElementById('colorpicker').onchange = function () {
+			color = this.value;
+		}
+		// Function to send a message to clear the leds
+		document.getElementById('clearledsbutton').onclick = function(){
+			socket.emit('clear_leds');
+		}
+		// Function to change_led_color
+		function change_led_color (event) {
+			// mousedown checks if button is pressed while on hover
+			if (event.buttons>0){
+				// get the id of the clicked div, and updates the
+				// background color
+				ledn = document.getElementById(this.id);
+				ledn.style.backgroundColor = color;
+				// send a message to the server to update the led color
+				socket.emit('update_led',
+					JSON.stringify({
+						'id': this.id,
+						'color': color }))
+			}
+		}
+		// Create an array of <div> to represent the leds from the RPis
+		for (var i = 0; i < 8; i++) {
+			for (var j = 0; j < 8; j++) {
+				var ledn = document.createElement('div');
+				ledn.id = i * 8 + j;
+				ledn.className = 'led';
+				// create a function to be called when mouse goes over div.
+				ledn.onmouseover = change_led_color;
+				ledn.onmousedown = change_led_color;
+				display.appendChild(ledn);
+			}
+		}
+		// When the user connects, the server sends a message with
+		// current colors for the LEDs. This function decodes the
+		// message and sets the initial colors of the LEDs on the
+		// web interface.
+		socket.on("current_colors", function (data) {
+			const packet = JSON.parse(data);
+			for (var i = 0; i < packet['colors'].length; i++) {
+				ccolor = "#" + componentToHex(packet['colors'][i][0]) +
+				componentToHex(packet['colors'][i][1]) +
+				componentToHex(packet['colors'][i][2]);
+				document.getElementById(i).style.backgroundColor = ccolor;
+			}
+		});
+		// updates the led
+		socket.on("update_led", function (data) {
+			const packet = JSON.parse(data);
+			document.getElementById(packet['id']).style.backgroundColor =
+packet['color'];
+		});
+		// converts a color in decimal to hex
+		function componentToHex(c) {
+			var hex = c.toString(16);
+			return hex.length == 1 ? "0" + hex : hex;
+		}
+		// converts rgb to hex
+		function rgbToHex(r, g, b) {
+			return "#" + componentToHex(r) + componentToHex(g) +
+componentToHex(b);
+		}
+	</script>
+</body>
+
+</html>
