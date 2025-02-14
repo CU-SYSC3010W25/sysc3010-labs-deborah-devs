@@ -41,15 +41,23 @@ def send_led_colors():
 @socketio.on('update_led')
 def update_led_color(data):
     data = json.loads(data)
+    x, _ = map_index_to_xy(int(data['id']))
+   
+    # Ignore updates for even-numbered columns (0,2,4,...)
+    if x % 2 == 0:
+        return  # Do nothing and do not emit any update to the web
+
     color_rgb = hex_to_rgb_color(data['color'])
     colors[int(data['id'])] = color_rgb
     sense.set_pixels(colors)
-    # Sends broadcast message to connected users.    
+   
+    # Only emit the update if it was applied
     emit('update_led',
          json.dumps(dict(
             id=data['id'],
             color=data['color'])),
          broadcast=True)
+
 
 # New function to clear the LEDs when the button is pressed
 @socketio.on('clear_leds')
